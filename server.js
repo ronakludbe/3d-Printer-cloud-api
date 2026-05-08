@@ -57,6 +57,52 @@ app.get("/history", async (req, res) => {
   }
 });
 
+// COST CALCULATOR
+app.get("/cost", async (req, res) => {
+  try {
+    const start = Number(req.query.start);
+    const end = Number(req.query.end);
+    const tariff = Number(req.query.tariff || 10);
+
+    if (!start || !end) {
+      return res.status(400).json({
+        error: "start and end required"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("power_logs")
+      .select("energy")
+      .gte("timestamp_ms", start)
+      .lte("timestamp_ms", end)
+      .order("timestamp_ms", { ascending: true });
+
+    if (error) throw error;
+
+    if (!data || data.length < 2) {
+      return res.json({
+        energyUsed: 0,
+        cost: 0
+      });
+    }
+
+    const startEnergy = data[0].energy;
+    const endEnergy = data[data.length - 1].energy;
+
+    const energyUsed = endEnergy - startEnergy;
+    const cost = energyUsed * tariff;
+
+    res.json({
+      energyUsed,
+      cost
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
 app.listen(process.env.PORT || 3001, () => {
   console.log("Cloud API running on port 3001");
 });
