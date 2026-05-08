@@ -72,7 +72,7 @@ app.get("/cost", async (req, res) => {
 
     const { data, error } = await supabase
       .from("power_logs")
-      .select("energy")
+      .select("timestamp_ms, power")
       .gte("timestamp_ms", start)
       .lte("timestamp_ms", end)
       .order("timestamp_ms", { ascending: true });
@@ -86,10 +86,15 @@ app.get("/cost", async (req, res) => {
       });
     }
 
-    const startEnergy = data[0].energy;
-    const endEnergy = data[data.length - 1].energy;
+    let energyUsed = 0;
 
-    const energyUsed = endEnergy - startEnergy;
+    for (let i = 1; i < data.length; i++) {
+      const dt = data[i].timestamp_ms - data[i - 1].timestamp_ms;
+      const power = data[i - 1].power;
+
+      energyUsed += (power * dt) / 3600000000;
+    }
+
     const cost = energyUsed * tariff;
 
     res.json({
